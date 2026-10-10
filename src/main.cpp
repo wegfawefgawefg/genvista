@@ -3,20 +3,21 @@
 //
 //   genvista [--w 640] [--h 480] [--scale 5] [--seed 1] [--threads N]
 //            [--dither 10] [--no-palette] [--top 0.06] [--out out/vista.png]
+//            [--fly FRAMES] [--fly-to 72] [--fly-height 0.6] [--frames-dir out/fly]
 //
 // The scene is laid out in a 4:3 frame. A wider image keeps the full width
-// and shows a band of it starting --top of the way down.
+// and shows a band of it starting --top of the way down. --fly writes a
+// straight glide over the lake as numbered frames instead of one picture.
 
-#include "ink.hpp"
+#include "flyover.hpp"
+#include "picture.hpp"
 #include "render.hpp"
 #include "vista.hpp"
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <stb/stb_image_write.h>
 #include <string>
 #include <thread>
 #include <vector>
@@ -31,6 +32,9 @@ struct Options {
     float top = 0.06f;
     bool palette = true;
     std::string out = "out/vista.png";
+    FlyPath fly;
+    bool flying = false;
+    std::string frames_dir = "out/fly";
 };
 
 static Options parse_options(int argc, char** argv) {
@@ -60,6 +64,15 @@ static Options parse_options(int argc, char** argv) {
             options.dither = static_cast<float>(std::atof(next));
         } else if (std::strcmp(arg, "--top") == 0) {
             options.top = static_cast<float>(std::atof(next));
+        } else if (std::strcmp(arg, "--fly") == 0) {
+            options.fly.frames = std::atoi(next);
+            options.flying = true;
+        } else if (std::strcmp(arg, "--fly-to") == 0) {
+            options.fly.to_z = static_cast<float>(std::atof(next));
+        } else if (std::strcmp(arg, "--fly-height") == 0) {
+            options.fly.height = static_cast<float>(std::atof(next));
+        } else if (std::strcmp(arg, "--frames-dir") == 0) {
+            options.frames_dir = next;
         } else if (std::strcmp(arg, "--out") == 0) {
             options.out = next;
         } else {
@@ -72,21 +85,6 @@ static Options parse_options(int argc, char** argv) {
         options.threads = static_cast<int>(std::thread::hardware_concurrency());
     }
     return options;
-}
-
-// nearest-neighbour blow-up so the pixels stay pixels
-static std::vector<std::uint8_t> upscale(const std::vector<std::uint8_t>& rgb, int w, int h,
-                                         int scale) {
-    const int ow = w * scale;
-    std::vector<std::uint8_t> out(static_cast<std::size_t>(ow * h * scale * 3));
-    for (int y = 0; y < h * scale; ++y) {
-        for (int x = 0; x < ow; ++x) {
-            const std::size_t from = static_cast<std::size_t>(((y / scale) * w + x / scale) * 3);
-            const std::size_t to = static_cast<std::size_t>((y * ow + x) * 3);
-            std::memcpy(out.data() + to, rgb.data() + from, 3);
-        }
-    }
-    return out;
 }
 
 int main(int argc, char** argv) {
@@ -105,22 +103,17 @@ int main(int argc, char** argv) {
     }
     build_vista(scene, options.seed);
 
+    const PictureStyle style{options.scale, options.dither, options.palette};
+    if (options.flying) {
+        return fly_over(scene, options.fly, style, options.threads, options.frames_dir) ? 0 : 1;
+    }
+
     // trace every pixel
     std::vector<Sample> samples = render(scene, options.threads);
     const auto traced = std::chrono::steady_clock::now();
 
-    // ink it and snap it to the palette
-    hatch(scene, samples, options.w, options.h);
-    ink_lines(scene, samples, options.w, options.h);
-    const std::vector<std::uint8_t> rgb =
-        quantize(samples, options.w, options.h, options.dither, options.palette);
-
-    // write it out
-    const int scale = options.scale < 1 ? 1 : options.scale;
-    const std::vector<std::uint8_t> big = upscale(rgb, options.w, options.h, scale);
-    if (!stbi_write_png(options.out.c_str(), options.w * scale, options.h * scale, 3, big.data(),
-                        options.w * scale * 3)) {
-        std::fprintf(stderr, "genvista: could not write %s\n", options.out.c_str());
+    // ink it, snap it to the palette, write it out
+    if (!write_picture(scene, samples, style, options.out.c_str())) {
         return 1;
     }
     const auto done = std::chrono::steady_clock::now();

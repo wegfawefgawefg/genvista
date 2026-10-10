@@ -22,6 +22,9 @@ add_executable(genvista
     src/land.cpp
     src/trees.cpp
     src/clouds.cpp
+    src/picture.cpp
+    src/flyover.cpp
+    src/stb_write.cpp
 )
 target_compile_options(genvista PRIVATE -Wall -Wextra -O2 -march=native)
 target_link_libraries(genvista PRIVATE Threads::Threads)

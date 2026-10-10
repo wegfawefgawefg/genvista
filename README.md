@@ -27,5 +27,11 @@ the seed.
     ./build/genvista --w 640 --h 360 --scale 3 --out out/vista-1920x1080.png
     ./build/genvista --seed 7 --no-palette --dither 0  # other lumps, raw colour
 
+A flyover, a straight level glide just above the water toward the far shore
+(12 s at 30 fps, 1080p, under a minute on 32 threads; needs ffmpeg):
+
+    scripts/flyover.sh                                 # -> out/flyover.mp4
+    FRAMES=600 scripts/flyover.sh --fly-to 75 --fly-height 1.5
+
 A wider image keeps the full width of the 4:3 layout and shows a band of it
 starting `--top` (0.06) of the way down.
