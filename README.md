@@ -28,10 +28,15 @@ the seed.
     ./build/genvista --seed 7 --no-palette --dither 0  # other lumps, raw colour
 
 A flyover, a straight level glide just above the water toward the far shore
-(12 s at 30 fps, 1080p, under a minute on 32 threads; needs ffmpeg):
+(12 s at 30 fps, 1080p, under a minute on 32 threads), with a synthesised
+soundscape that follows the glide: the breeze, spruces soughing on each bank as
+it comes alongside, the lake lapping under you and against the far shore as it
+nears, snowmelt far off, chickadees, a raven echoing off the slopes, a fly
+zipping past the lens and a trout rising. Needs ffmpeg, and Python with numpy
+and scipy for the sound (`scripts/ambience.py`).
 
-    scripts/flyover.sh                                 # -> out/flyover.mp4
-    FRAMES=600 scripts/flyover.sh --fly-to 75 --fly-height 1.5
+    scripts/flyover.sh                    # -> out/flyover.mp4, out/flyover-sound.mp4
+    FRAMES=600 TO=75 scripts/flyover.sh --fly-height 1.5
 
 A wider image keeps the full width of the 4:3 layout and shows a band of it
 starting `--top` (0.06) of the way down.
